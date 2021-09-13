@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks.Dataflow;
+using Newtonsoft.Json.Linq;
 
 namespace Chapter_2
 {
@@ -11,10 +14,11 @@ namespace Chapter_2
     {
         static void Main(string[] args)
         {
-
-
-
-
+            // For JSON POST requests:
+            string url = args[0];
+            string requestFile = args[1];
+            string[] request = null;
+            fuzzJsonPostRequests(url, requestFile, request);
 
             // For POST requests:
             // string[] requestLines = File.ReadAllLines(args[0]);
@@ -29,6 +33,19 @@ namespace Chapter_2
             // {
             //     fuzzGetRequests(url, parm);
             // }
+        }
+
+        private static void fuzzJsonPostRequests(string url, string requestFile, string[] request) {
+            using(StreamReader rdr = new StreamReader(File.OpenRead(requestFile)))
+            {
+                request = rdr.ReadToEnd().Split('\n');
+            }
+
+            string json = request[request.Length -1];
+            JObject obj = JObject.Parse(json);
+
+            Console.WriteLine("Fuzzing POST requests to URL " + url);
+            IterateAndFuzz(url, obj);
         }
 
         private static void fuzzPostRequests(string[] requestLines, string[] parms) {
@@ -113,6 +130,68 @@ namespace Chapter_2
                 {
                     Console.WriteLine("SQL injection point found in parameter: " + parm);
                 }
+        }
+
+        private static void IterateAndFuzz(string url, JObject obj)
+        {
+            foreach(var pair in (JObject)obj.DeepClone()) // Clone because we only want to fuzz one value at a time, and keep the others as the original.
+            {
+                if(pair.Value.Type == JTokenType.String || pair.Value.Type == JTokenType.Integer)
+                {
+                    Console.WriteLine("Fuzzing key: " + pair.Key);
+
+                    if(pair.Value.Type == JTokenType.Integer)
+                    {
+                        Console.WriteLine("Converting int type to string to fuzz");
+
+                        JToken oldVal = pair.Value;
+                        obj[pair.Key] = pair.Value.ToString() + "'";
+
+                        if(FuzzJToken(url, obj.Root))
+                        {
+                            Console.WriteLine("SQL injection vector: " + pair.Key);
+                        }
+                        else
+                        {
+                            Console.WriteLine(pair.Key + " does not seem vulnerable.");
+                        }
+                        obj[pair.Key] = oldVal;
+                    }
+                }
+            }
+        }
+
+        private static bool FuzzJToken(string url, JToken obj)
+        {
+            byte[] data = System.Text.Encoding.ASCII.GetBytes(obj.ToString());
+
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+            req.Method = "POST"; // Default is GET
+            req.ContentLength = data.Length;
+            req.ContentType = "application/javascript";
+
+            using(Stream stream = req.GetRequestStream())
+            {
+                stream.Write(data, 0, data.Length);
+            }
+
+            try
+            {
+                req.GetResponse();
+            }
+            catch(WebException e)
+            {
+                string resp = string.Empty;
+                using(StreamReader r = new StreamReader(e.Response.GetResponseStream()))
+                {
+                    resp = r.ReadToEnd();
+                }
+                // Both error messages are MySQL error messages. Personally I think checking for a specific string error message is dumb, but this is only an example project.
+                // I would assume good server side software would be catching all errors and responding with custom error messages.
+                // Regardless, SQL error == SQL injection possibility
+                return (resp.Contains("syntax error") || resp.Contains("undetermined"));
+            }
+            return false;
         }
     }
 }

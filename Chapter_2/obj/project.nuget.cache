@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "3UPo2rO6s9IQcSX6H9BzkYgSNqbeDAM4H5+9QrqzzC5JkCMmYSqrmRgTJFNPe1dN4GMJN/P7XL8nV7s/7Vn5eg==",
+  "dgSpecHash": "JzIytl9EA7cIA/bFy6WEpjptnNlTxxCYY0mNWq/VifeR6NCRdi05c8Zqjic3yvDkbGhe5FSJjmcgO1M6rWhZew==",
   "success": true,
-  "projectFilePath": "C:\\Users\\rcassell\\Documents\\Grey_hat_c#\\Chapter_2\\Chapter_2.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\rcassell\\Documents\\Grey_hat_c#\\Chapter_Projects\\Chapter_2\\Chapter_2.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\rcassell\\.nuget\\packages\\newtonsoft.json\\13.0.1\\newtonsoft.json.13.0.1.nupkg.sha512"
+  ],
   "logs": []
 }
